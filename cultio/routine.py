@@ -4,7 +4,7 @@ from collections.abc import Callable
 from . import interrupts
 
 
-class Routine:
+class SchedulerRoutine:
     __slots__ = (
         'scheduler',
         'func',
@@ -13,18 +13,17 @@ class Routine:
     )
 
     def __init__(self, scheduler, func, *, name=None):
+        if name is None:
+            name = func.__name__
+
         self.scheduler = scheduler
         self.func = func
-
-        if name is not None:
-            self.name = name
-        else:
-            self.name = func.__name__
+        self.name = name
 
         self._interrupts = {}
 
     def __repr__(self):
-        return f'<Routine {self.name!r}>'
+        return f'<SchedulerRoutine {self.name!r}>'
 
     def set_interrupt(self, interrupt, handler):
         if interrupt not in signal.valid_signals():

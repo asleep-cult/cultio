@@ -17,10 +17,9 @@ class _BaseResultWaiter:
         self.scheduler = scheduler
 
         self._event = self._create_evnet()
-
-        self._set = False
         self._routines = []
 
+        self._set = False
         self._result = None
         self._exception = None
 
@@ -69,15 +68,13 @@ class _BaseResultWaiter:
             raise RuntimeError('Cannot set exception of already-set waiter')
 
         self._exception = exception
-        self.__set_event()
+        self._set_event()
 
         for routine in self._routines:
             routine.spawn()
 
 
 if sys.platform == 'win32':
-    import ctypes
-
     from . import pyapi
     from . import winapi
 
@@ -91,11 +88,7 @@ if sys.platform == 'win32':
             else:
                 timeout = math.floor(timeout * 1000)
 
-            events = (winapi.HANDLE * 2)()
-            events[0] = pyapi._PyOS_SigintEvent()
-            events[1] = self._event
-
-            events = ctypes.cast(events, ctypes.POINTER(winapi.HANDLE))
+            events = (winapi.HANDLE * 2)(pyapi._PyOS_SigintEvent(), self._event)
             result = winapi.WaitForMultipleObjectsEx(2, events, False, timeout, False)
 
             if result == winapi.WaitForResult.WAIT_IO_COMPLECTION:

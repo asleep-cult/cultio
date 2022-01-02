@@ -1,7 +1,7 @@
 import os
 import threading
 
-from .routine import Routine
+from .routine import SchedulerRoutine
 
 
 class _WorkerThread(threading.Thread):
@@ -22,4 +22,4 @@ class ThreadScheduler:
             self.threads = min(32, (os.cpu_count() or 1) + 4)
 
     def routine(self, func, *, name=None):
-        return Routine(self, func, name=name)
+        return SchedulerRoutine(self, func, name=name)
