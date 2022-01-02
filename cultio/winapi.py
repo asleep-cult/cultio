@@ -1,6 +1,9 @@
 import ctypes
+import enum
 
 kernel32 = ctypes.WinDLL('kernel32')
+
+INFINITE = 0xFFFFFFFF
 
 BOOL = ctypes.c_int
 BOOLEAN = BYTE = ctypes.c_ubyte
@@ -99,7 +102,7 @@ class _ReasonDetailed(ctypes.Structure):
     ]
 
 
-class _Reason(ctypes.Union):
+class _ReasonUnion(ctypes.Union):
     _fields_ = [
         ('Detailed', _ReasonDetailed),
         ('SimpleReasonString', LPWSTR),
@@ -110,7 +113,7 @@ class REASON_CONTEXT(ctypes.Structure):
     _fields_ = [
         ('Version', ULONG),
         ('Flags', DWORD),
-        ('Reason', _Reason)
+        ('Reason', _ReasonUnion)
     ]
 
 
@@ -172,3 +175,11 @@ WaitForMultipleObjectsEx.argtypes = [
     DWORD,
     BOOL,
 ]
+
+
+class WaitForResult(enum.IntEnum):
+    WAIT_OBJECT_0 = 0
+    WAIT_ABANDONED_0 = 0x00000080
+    WAIT_IO_COMPLECTION = 0x000000C0
+    WAIT_TIMEOUT = 0x00000102
+    WAIT_FAILED = 0xFFFFFFFF
