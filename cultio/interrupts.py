@@ -14,13 +14,13 @@ class InterruptError(Exception):
         return f'An interrupt was raised: {signame}'
 
 
-class InterruptBehavior(enum.IntEnum):
+class InterruptType(enum.IntEnum):
     INTIGNORE = enum.auto()
     INTRAISE = enum.auto()
 
 
-INTIGNORE = InterruptBehavior.INTIGNORE
-INTRAISE = InterruptBehavior.INTRAISE
+INTIGNORE = InterruptType.INTIGNORE
+INTRAISE = InterruptType.INTRAISE
 
 NSIG = signal.NSIG
 
