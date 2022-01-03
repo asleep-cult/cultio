@@ -1,37 +1,13 @@
 import functools
 import math
 import sys
+import threading
 
 
-class _BaseEvent:
-    __slots__ = ('scheduler',)
-
-    def __init__(self, scheduler):
-        self.scheduler = scheduler
-
-    def is_set(self):
-        """Returns True if the event has been set."""
-        raise NotImplementedError
-
-    def wait(self, *, timeout=None):
-        """Blocks the calling thread until set is called.
-
-        Arguments:
-            timeout (float): The maximum amount of time to wait in seconds,
-                TimeoutError will be raised if the timeout is exceeded.
-        """
-        raise NotImplementedError
-
-    def set(self):
-        """Sets the event and wakes up the waiting threads."""
-        raise NotImplementedError
-
-
-class _BaseFuture:
+class Future:
     """An event with a value or exception bound to it. This class represents
     the return value of asynchronous operations.
     """
-
     __slots__ = (
         'scheduler',
         '_event',
@@ -50,7 +26,7 @@ class _BaseFuture:
         self._exception = None
 
     def create_event(self):
-        raise NotImplementedError
+        return Event(self.scheduler)
 
     def is_set(self):
         """Returns True if the future's result has been set."""
@@ -111,6 +87,35 @@ class _BaseFuture:
             del self._routines
 
 
+class _BaseEvent:
+    __slots__ = ('scheduler',)
+
+    def __init__(self, scheduler):
+        self.scheduler = scheduler
+
+    def __repr__(self):
+        return '<{} [{}]>'.format(
+            self.__class__.__name__, 'set' if self.is_set() else 'unset'
+        )
+
+    def is_set(self):
+        """Returns True if the event has been set."""
+        raise NotImplementedError
+
+    def wait(self, *, timeout=None):
+        """Blocks the calling thread until set is called.
+
+        Arguments:
+            timeout (float): The maximum amount of time to wait in seconds,
+                TimeoutError will be raised if the timeout is exceeded.
+        """
+        raise NotImplementedError
+
+    def set(self):
+        """Sets the event and wakes up the waiting threads."""
+        raise NotImplementedError
+
+
 if sys.platform == 'win32':
     from . import pyapi
     from . import winapi
@@ -147,15 +152,8 @@ if sys.platform == 'win32':
         def set(self):
             winapi.SetEvent(self._hevent)
 
-    class WindowsFuture(_BaseFuture):
-        def create_event(self):
-            return WindowsEvent(self.scheduler)
-
     Event = WindowsEvent
-    Future = WindowsFuture
 else:
-    import threading
-
     class UnixEvent(_BaseEvent):
         __slots__ = ('_flag', '_tevent',)
 
@@ -174,9 +172,4 @@ else:
         def set(self):
             self._tevent.set()
 
-    class UnixFuture(_BaseFuture):
-        def create_event(self):
-            return UnixEvent(self.scheduler)
-
     Event = UnixEvent
-    Future = UnixFuture
