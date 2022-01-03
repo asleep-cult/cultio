@@ -2,7 +2,7 @@ import enum
 import signal
 
 
-class InterruptError(Exception):
+class InterruptError(BaseException):
     def __init__(self, interrupt):
         self.interrupt = interrupt
 
@@ -16,11 +16,11 @@ class InterruptError(Exception):
 
 class InterruptType(enum.IntEnum):
     INTIGNORE = enum.auto()
-    INTRAISE = enum.auto()
+    INTENQUEUE = enum.auto()
 
 
 INTIGNORE = InterruptType.INTIGNORE
-INTRAISE = InterruptType.INTRAISE
+INTENQUEUE = InterruptType.INTENQUEUE
 
 NSIG = signal.NSIG
 

@@ -183,3 +183,7 @@ class WaitForResult(enum.IntEnum):
     WAIT_IO_COMPLECTION = 0x000000C0
     WAIT_TIMEOUT = 0x00000102
     WAIT_FAILED = 0xFFFFFFFF
+
+
+def HANDLES(*args):
+    return (HANDLE * len(args))(*args)
