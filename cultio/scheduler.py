@@ -1,14 +1,15 @@
+import contextlib
 import enum
+import logging
 import os
 import queue
-import signal
 import threading
-import warnings
 
-from .concurrent import Promise
-from .interrupts import InterruptError
-from .pyapi import PyThreadState_SetAsyncExc
 from .routine import SchedulerRoutine
+from .sync import Promise
+
+
+logger = logging.getLogger(__name__)
 
 
 class _QueueControl(enum.Enum):
@@ -18,54 +19,59 @@ class _QueueControl(enum.Enum):
 class _WorkerThread(threading.Thread):
     def __init__(self, *, name=None):
         super().__init__(name=name)
+
         self._queue = queue.Queue()
         self._routine = None
 
+    @contextlib.contextmanager
+    def _set_routine(self, routine):
+        if self._routine is not None:
+            raise RuntimeError('thread attempted to set multiple futures')
+
+        self._routine = routine
+        routine._running.set()
+        yield
+        self._routine = None
+
+    def get_routine(self):
+        if self._routine is None:
+            raise RuntimeError('thread has no routine')
+
+        return self._routine
+
     def interrupt(self, interrupt):
-        if (
-            self._routine is not None
-            and not self._routine.is_intignored(interrupt)
-        ):
+        routine = self._routine
+        if routine is None or routine.is_ignored(interrupt):
             if self._routine.is_intenqueued(interrupt):
-                return
-
-            handler = self._routine.get_interrupt(interrupt)
-            if handler is not None:
-                routine = self._routine.scheduler.routine(handler)
-                routine.spawn()
+                ...
             else:
-                if interrupt == signal.SIGINT:
-                    exc = KeyboardInterrupt
-                else:
-                    exc = InterruptError(interrupt)
-
-                # If the routine is currently waiting on a future, then we
-                # wake it up and set the future's interrupt. Otherwise we
-                # deliver an exception to the thread asynchronously.
-                future = self._routine._future
-                if future is not None:
-                    future._interrupt = exc
-                    future._set_event()
-                else:
-                    PyThreadState_SetAsyncExc(self.native_id, exc)
+                try:
+                    routine.raise_interrupt(interrupt)
+                except RuntimeError:
+                    logger.warning(
+                        'Failed to raise interrupt due to race condition', exc_info=True
+                    )
 
     def run(self):
         running = True
         while running:
             item = self._queue.get()
             if item is _QueueControl.SHUTDOWN:
-                if not self._queue.empty():
-                    warnings.warn('Shutting down worker with non-empty queue')
-
                 running = False
             else:
-                self._routine = item
-                try:
-                    result = self._routine.func()
-                except BaseException as exc:
-                    self._routine._promise.set_exception(exc)
-                else:
-                    self._routine._promise.set_result(result)
+                if self._routine is not None:
+                    raise RuntimeError('thread attempted to run multiple routines')
+
+                with self._set_routine(item):
+                    try:
+                        result = item.func()
+                    except BaseException as exc:
+                        item._promise.set_exception(exc)
+                    else:
+                        item._promise.set_result(result)
+
+        if not self._queue.empty():
+            logger.warning('Shutting down worker with non-empty queue')
 
 
 class ThreadScheduler:
@@ -81,8 +87,16 @@ class ThreadScheduler:
         else:
             self.max_threads = min(32, (os.cpu_count() or 1) + 4)
 
-        self.threads = []
-        self.threads.append(main_thread)
+        self.thread_ids = set()
+        self.thread_ids.add(main_thread.ident)
+
+    def current_routine(self):
+        thread = threading.current_thread()
+        if thread.ident not in self.thread_ids:
+            raise RuntimeError('Cannot get routine in this thread')
+
+        assert isinstance(thread, _WorkerThread)
+        return thread.get_routine()
 
     def routine(self, func, *, name=None):
         return SchedulerRoutine(self, func, name=name)
