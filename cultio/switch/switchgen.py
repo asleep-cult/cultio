@@ -111,22 +111,23 @@ def generate_unix_amd64(fp: io.TextIOBase) -> None:
     stack_offset = 0
 
     for reg in UNIX_AMD64_REGS:
-        fp.write(f'    movq QWORD PTR [rsp+{hex(stack_offset)}], {reg}\n')
+        fp.write(f'    mov QWORD PTR [rsp+{hex(stack_offset)}], {reg}\n')
         stack_offset += 8
 
     fp.write('\n')
-    fp.write('    movq QWORD PTR [rdi], rsp\n')
-    fp.write('    movq rsp, QWORD PTR [rsi]\n\n')
+    fp.write('    mov QWORD PTR [rdi], rsp\n')
+    fp.write('    mov rsp, QWORD PTR [rsi]\n\n')
+
+    stack_offset = 0
 
     for reg in UNIX_AMD64_REGS:
-        fp.write(f'    movq {reg}, QWORD PTR [rsp+{hex(stack_offset)}]\n')
+        fp.write(f'    mov {reg}, QWORD PTR [rsp+{hex(stack_offset)}]\n')
         stack_offset += 8
 
-    fp.write(f'    add rsp, {reserve}\n')
+    fp.write(f'    add rsp, {reserve}\n\n')
 
-    fp.write('\n')
-    fp.write('    popq rcx\n')
-    fp.write('    jmpq QWORD PTR [rcx]\n')
+    fp.write('    pop rcx\n')
+    fp.write('    jmp rcx\n')
 
 
 if __name__ == '__main__':
