@@ -31,7 +31,7 @@ def inside_switch():
 
     time.sleep(2)
 
-    print('hello again. this is getting boring... i\'m foint to wakeup main()')
+    print('hello again. this is getting boring... i\'m going to wakeup main()')
     lib.sswitch(stack, cstack)
 
 
@@ -46,7 +46,7 @@ def main():
     segment = addr - (RESERVE // 8)
 
     print(1)
-    lib.sswitch(cstack, segment)
+    lib.sswitch(cstack, ffi.new('void **', segment))
     print(2)
 
 

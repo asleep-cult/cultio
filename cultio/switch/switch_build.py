@@ -6,7 +6,7 @@ import cffi
 
 machine = platform.machine()
 
-if machine == 'AMD64':
+if machine in ('AMD64', 'x86_64'):
     if sys.platform == 'win32':
         source = 'win_amd64_switch.c'
     elif sys.platform.startswith(('linux', 'freebsd', 'openbsd')):

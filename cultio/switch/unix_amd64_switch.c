@@ -4,26 +4,26 @@
 
 void sswitch(void **ostack, void **dstack) {
     __asm__ __volatile__ (
-        "sub rsp, 48\n"
-        "mov QWORD PTR [rsp+0x0], r12\n"
-        "mov QWORD PTR [rsp+0x8], r13\n"
-        "mov QWORD PTR [rsp+0x10], r14\n"
-        "mov QWORD PTR [rsp+0x18], r15\n"
-        "mov QWORD PTR [rsp+0x20], rbx\n"
-        "mov QWORD PTR [rsp+0x28], rbp\n"
+        "subq $0x30, %rsp\n"
+        "movq %r12, 0x0(%rsp)\n"
+        "movq %r13, 0x8(%rsp)\n"
+        "movq %r14, 0x10(%rsp)\n"
+        "movq %r15, 0x18(%rsp)\n"
+        "movq %rbx, 0x20(%rsp)\n"
+        "movq %rbp, 0x28(%rsp)\n"
 
-        "mov QWORD PTR [rdi], rsp\n"
-        "mov rsp, QWORD PTR [rsi]\n"
+        "movq %rsp, (%rdi)\n"
+        "movq (%rsi), %rsp\n"
 
-        "mov r12, QWORD PTR [rsp+0x0]\n"
-        "mov r13, QWORD PTR [rsp+0x8]\n"
-        "mov r14, QWORD PTR [rsp+0x10]\n"
-        "mov r15, QWORD PTR [rsp+0x18]\n"
-        "mov rbx, QWORD PTR [rsp+0x20]\n"
-        "mov rbp, QWORD PTR [rsp+0x28]\n"
-        "add rsp, 48\n"
+        "movq 0x0(%rsp), %r12\n"
+        "movq 0x8(%rsp), %r13\n"
+        "movq 0x10(%rsp), %r14\n"
+        "movq 0x18(%rsp), %r15\n"
+        "movq 0x20(%rsp), %rbx\n"
+        "movq 0x28(%rsp), %rbp\n"
+        "addq $0x30, %rsp\n"
 
-        "pop rcx\n"
-        "jmp rcx\n"
+        "popq %rcx\n"
+        "jmpq %rcx\n"
     );
 }

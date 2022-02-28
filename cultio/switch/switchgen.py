@@ -148,28 +148,28 @@ def generate_unix_amd64_c(fp: io.TextIOBase) -> None:
     fp.write('    __asm__ __volatile__ (\n')
 
     reserve = 8 * len(UNIX_AMD64_REGS)
-    fp.write(f'        "sub rsp, {reserve}\\n"\n')
+    fp.write(f'        "subq ${hex(reserve)}, %rsp\\n"\n')
 
     stack_offset = 0
 
     for reg in UNIX_AMD64_REGS:
-        fp.write(f'        "mov QWORD PTR [rsp+{hex(stack_offset)}], {reg}\\n"\n')
+        fp.write(f'        "movq %{reg}, {hex(stack_offset)}(%rsp)\\n"\n')
         stack_offset += 8
 
     fp.write('\n')
-    fp.write('        "mov QWORD PTR [rdi], rsp\\n"\n')
-    fp.write('        "mov rsp, QWORD PTR [rsi]\\n"\n\n')
+    fp.write('        "movq %rsp, (%rdi)\\n"\n')
+    fp.write('        "movq (%rsi), %rsp\\n"\n\n')
 
     stack_offset = 0
 
     for reg in UNIX_AMD64_REGS:
-        fp.write(f'        "mov {reg}, QWORD PTR [rsp+{hex(stack_offset)}]\\n"\n')
+        fp.write(f'        "movq {hex(stack_offset)}(%rsp), %{reg}\\n"\n')
         stack_offset += 8
 
-    fp.write(f'        "add rsp, {reserve}\\n"\n\n')
+    fp.write(f'        "addq ${hex(reserve)}, %rsp\\n"\n\n')
 
-    fp.write('        "pop rcx\\n"\n')
-    fp.write('        "jmp rcx\\n"\n')
+    fp.write('        "popq %rcx\\n"\n')
+    fp.write('        "jmpq %rcx\\n"\n')
 
     fp.write('    );\n')
     fp.write('}\n')
