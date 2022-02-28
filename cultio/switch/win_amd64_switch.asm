@@ -7,7 +7,7 @@ BITS 64
 global switch
 section .text
 
-switch:
+sswitch:
     sub rsp, 232
     movaps [rsp+0x0], xmm6
     movaps [rsp+0x10], xmm7
@@ -52,4 +52,4 @@ switch:
     add rsp, 232
 
     pop rcx
-    jmp [rcx]
+    jmp rcx
