@@ -8,7 +8,7 @@ global switch
 section .text
 
 sswitch:
-    sub rsp, 232
+    sub rsp, 0xa8
     movaps [rsp+0x0], xmm6
     movaps [rsp+0x10], xmm7
     movaps [rsp+0x20], xmm8
@@ -19,18 +19,32 @@ sswitch:
     movaps [rsp+0x70], xmm13
     movaps [rsp+0x80], xmm14
     movaps [rsp+0x90], xmm15
-    mov [rsp+0xa0], rsi
-    mov [rsp+0xa8], rdi
-    mov [rsp+0xb0], rbp
-    mov [rsp+0xb8], rbx
-    mov [rsp+0xc0], r12
-    mov [rsp+0xc8], r13
-    mov [rsp+0xd0], r14
-    mov [rsp+0xd8], r15
+    push rsi
+    push rdi
+    push rbp
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    push QWORD [gs:0x00]
+    push QWORD [gs:0x08]
+    push QWORD [gs:0x10]
 
     mov [rcx], rsp
     mov rsp, [rdx]
 
+    pop rsi
+    pop rdi
+    pop rbp
+    pop rbx
+    pop r12
+    pop r13
+    pop r14
+    pop r15
+    pop QWORD [gs:0x00]
+    pop QWORD [gs:0x08]
+    pop QWORD [gs:0x10]
     movaps xmm6, [rsp+0x0]
     movaps xmm7, [rsp+0x10]
     movaps xmm8, [rsp+0x20]
@@ -41,15 +55,7 @@ sswitch:
     movaps xmm13, [rsp+0x70]
     movaps xmm14, [rsp+0x80]
     movaps xmm15, [rsp+0x90]
-    mov rsi, [rsp+0xa0]
-    mov rdi, [rsp+0xa8]
-    mov rbp, [rsp+0xb0]
-    mov rbx, [rsp+0xb8]
-    mov r12, [rsp+0xc0]
-    mov r13, [rsp+0xc8]
-    mov r14, [rsp+0xd0]
-    mov r15, [rsp+0xd8]
-    add rsp, 232
 
-    pop rcx
+    mov rcx, [rsp+0xa8]
+    add rsp, 0xa8
     jmp rcx

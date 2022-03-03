@@ -33,6 +33,9 @@ WIN_AMD64_REGS = (
     'r13',
     'r14',
     'r15',
+    'gs:0x00',
+    'gs:0x08',
+    'gs:0x10'
 )
 # Windows Exclusions:
 # rcx, rdx, r8, r9, xmm0L, xmm1L, xmm2L, xmm3L because they are used for arguments
@@ -49,17 +52,22 @@ def parse_disasm_instructions(lines: list[str]) -> list[tuple[str, str]]:
 
         if match is not None:
             instructions.append((match.group(2), match.group(3)))
+        elif line.strip() == '-00':
+            instructions.append(('-00', ''))
 
     return instructions
 
 
 def generate_win_amd64_asm(fp: io.TextIOBase) -> None:
-    regs: list[str] = []
     fp_regs: list[str] = []
+    seh_regs: list[str] = []
+    regs: list[str] = []
 
     for reg in WIN_AMD64_REGS:
         if reg.startswith('xmm'):
             fp_regs.append(reg)
+        elif reg.startswith('gs'):
+            seh_regs.append(reg)
         else:
             regs.append(reg)
 
@@ -74,8 +82,8 @@ def generate_win_amd64_asm(fp: io.TextIOBase) -> None:
 
     fp.write('sswitch:\n')
 
-    reserve = (16 * len(fp_regs)) + (8 * (len(regs) + 1))
-    fp.write(f'    sub rsp, {reserve}\n')
+    reserve = (16 * len(fp_regs)) + 8
+    fp.write(f'    sub rsp, {hex(reserve)}\n')
 
     stack_offset = 0
 
@@ -84,12 +92,20 @@ def generate_win_amd64_asm(fp: io.TextIOBase) -> None:
         stack_offset += 16
 
     for reg in regs:
-        fp.write(f'    mov [rsp+{hex(stack_offset)}], {reg}\n')
-        stack_offset += 8
+        fp.write(f'    push {reg}\n')
+
+    for reg in seh_regs:
+        fp.write(f'    push QWORD [{reg}]\n')
 
     fp.write('\n')
     fp.write('    mov [rcx], rsp\n')
     fp.write('    mov rsp, [rdx]\n\n')
+
+    for reg in regs:
+        fp.write(f'    pop {reg}\n')
+
+    for reg in seh_regs:
+        fp.write(f'    pop QWORD [{reg}]\n')
 
     stack_offset = 0
 
@@ -97,14 +113,9 @@ def generate_win_amd64_asm(fp: io.TextIOBase) -> None:
         fp.write(f'    movaps {reg}, [rsp+{hex(stack_offset)}]\n')
         stack_offset += 16
 
-    for reg in regs:
-        fp.write(f'    mov {reg}, [rsp+{hex(stack_offset)}]\n')
-        stack_offset += 8
-
-    fp.write(f'    add rsp, {reserve}\n')
-
     fp.write('\n')
-    fp.write('    pop rcx\n')
+    fp.write(f'    mov rcx, [rsp+{hex(reserve)}]\n')
+    fp.write(f'    add rsp, {hex(reserve)}\n')
     fp.write('    jmp rcx\n')
 
 
@@ -126,10 +137,15 @@ def generate_win_amd64_c(fp: io.TextIOBase, output: str) -> None:
     asm_start = (largest // 2) * 6
 
     for instruction, asm in instructions:
-        chars = ', '.join(f'0x{instruction[i:i+2]}' for i in range(0, len(instruction), 2))
+        if instruction == '-00':
+            fp.write('    0x00,\n')
+        else:
+            chars = ', '.join(
+                f'0x{instruction[i:i+2]}' for i in range(0, len(instruction), 2)
+            )
 
-        padding = ' ' * (asm_start - len(chars))
-        fp.write(f'    {chars},{padding}// {asm}\n')
+            padding = ' ' * (asm_start - len(chars))
+            fp.write(f'    {chars},{padding}// {asm}\n')
 
     fp.write('};\n\n')
 
@@ -187,7 +203,7 @@ if __name__ == '__main__':
     with open(source, 'w') as fp:
         generate_win_amd64_asm(fp)
 
-    os.system(f'nasm -f bin {source} -o {output}')
+    subprocess.run(f'nasm -f bin {source} -o {output}', check=True)
 
     with open(os.path.join(dirname, 'win_amd64_switch.c'), 'w') as fp:
         generate_win_amd64_c(fp, output)
